@@ -1,0 +1,18 @@
+{
+  "name": "book-check",
+  "version": "1.0.0",
+  "description": "Screen books for a young reader using live web research by Claude",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "private": true
+}

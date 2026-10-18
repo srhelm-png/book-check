@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Book Check</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Public+Sans:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a single reading column — search slip on top, then the report like a library review card: verdict, content meter, sources, summary. */
+:root {
+  --bg: #eef1f3;
+  --paper: #ffffff;
+  --ink: #18212e;
+  --muted: #5a6575;
+  --line: #d5dbe2;
+  --accent: #1d5f6b;
+  --accent-soft: #dcecee;
+  --ok: #2f7a3e;   --ok-bg: #e2f1e4;
+  --warn: #9a6a00; --warn-bg: #fbf0d3;
+  --hold: #b4520f; --hold-bg: #fbe5d6;
+  --stop: #a8283a; --stop-bg: #f8dfe2;
+  --display: "Young Serif", Georgia, "Times New Roman", serif;
+  --body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161d; --paper: #18202a; --ink: #e6ebf1; --muted: #9aa6b5; --line: #2c3744;
+    --accent: #6cc0cc; --accent-soft: #1b3439;
+    --ok: #79c88a; --ok-bg: #1a3020; --warn: #e3b64c; --warn-bg: #352a10;
+    --hold: #f0995a; --hold-bg: #3a2414; --stop: #f07f8f; --stop-bg: #3b1a20;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161d; --paper: #18202a; --ink: #e6ebf1; --muted: #9aa6b5; --line: #2c3744;
+  --accent: #6cc0cc; --accent-soft: #1b3439;
+  --ok: #79c88a; --ok-bg: #1a3020; --warn: #e3b64c; --warn-bg: #352a10;
+  --hold: #f0995a; --hold-bg: #3a2414; --stop: #f07f8f; --stop-bg: #3b1a20;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0;
+  background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 56px;
+}
+.wrap { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 400; text-wrap: balance; margin: 0; }
+h1 { font-size: 2.1rem; line-height: 1.1; }
+h2 { font-size: 1.35rem; }
+h3 { font-size: 1.05rem; }
+p { margin: 0; }
+.eyebrow { font-family: var(--mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.lede { color: var(--muted); max-width: 62ch; }
+header { display: flex; flex-direction: column; gap: 8px; }
+
+/* Search slip */
+form.slip {
+  background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 18px;
+  display: grid; grid-template-columns: 2fr 1.4fr 90px; gap: 12px 14px; align-items: end;
+}
+.field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.field label { font-size: .8rem; font-weight: 600; color: var(--muted); }
+.field input, .field textarea {
+  font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 6px; padding: 9px 11px; width: 100%;
+}
+.field textarea { min-height: 84px; resize: vertical; font-size: .92rem; }
+.field input:focus-visible, .field textarea:focus-visible, button:focus-visible, a:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+.slip details { grid-column: 1 / -1; }
+.slip summary { cursor: pointer; font-size: .88rem; color: var(--accent); font-weight: 600; }
+.slip details .field { margin-top: 10px; }
+.slip .hint { font-size: .8rem; color: var(--muted); }
+.actions { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+button {
+  font: inherit; font-weight: 600; border-radius: 6px; padding: 10px 18px; cursor: pointer;
+  border: 1px solid var(--accent); background: var(--accent); color: var(--paper);
+}
+button.ghost { background: transparent; color: var(--accent); }
+button:disabled { opacity: .55; cursor: default; }
+.status { font-size: .9rem; color: var(--muted); }
+.status.err { color: var(--stop); }
+@media (max-width: 600px) {
+  form.slip { grid-template-columns: 1fr 1fr; }
+  form.slip .field.title { grid-column: 1 / -1; }
+}
+
+/* Report */
+.report { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.report > section { padding: 20px 22px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 12px; }
+.report > section:first-child { border-top: 0; }
+.example-tag {
+  align-self: flex-start; font-family: var(--mono); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase;
+  background: var(--accent-soft); color: var(--accent); padding: 3px 8px; border-radius: 4px;
+}
+.book-head { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+.book-head .meta { color: var(--muted); font-size: .92rem; }
+.book-head > div { min-width: 0; }
+.conf { font-family: var(--mono); font-size: .75rem; color: var(--muted); white-space: nowrap; }
+
+.verdict { border-radius: 8px; padding: 16px 18px; display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; align-items: center; }
+.verdict .stamp {
+  grid-row: span 2; font-family: var(--mono); font-weight: 500; font-size: .78rem; letter-spacing: .08em; text-transform: uppercase;
+  border: 2px solid currentColor; border-radius: 6px; padding: 8px 10px; text-align: center; line-height: 1.25; max-width: 128px;
+}
+.verdict .headline { font-family: var(--display); font-size: 1.2rem; line-height: 1.25; }
+.verdict .why { font-size: .95rem; min-width: 0; }
+.v-yes   { background: var(--ok-bg);   color: var(--ok); }
+.v-guided{ background: var(--warn-bg); color: var(--warn); }
+.v-wait  { background: var(--hold-bg); color: var(--hold); }
+.v-no    { background: var(--stop-bg); color: var(--stop); }
+.verdict .headline, .verdict .why { color: var(--ink); }
+@media (max-width: 520px) { .verdict { grid-template-columns: 1fr; } .verdict .stamp { grid-row: auto; justify-self: start; max-width: none; } }
+
+.age-strip { display: flex; gap: 10px; flex-wrap: wrap; align-items: baseline; }
+.age-strip .big { font-family: var(--display); font-size: 2rem; line-height: 1; }
+
+/* Content meter */
+.scale-key { display: flex; gap: 14px; flex-wrap: wrap; font-size: .78rem; color: var(--muted); font-family: var(--mono); }
+.cats { display: flex; flex-direction: column; gap: 14px; }
+.cat { display: grid; grid-template-columns: 170px 120px 1fr; gap: 6px 16px; align-items: start; }
+.cat .name { font-weight: 600; }
+.cat .detail { font-size: .93rem; color: var(--ink); min-width: 0; }
+.dots { display: flex; gap: 5px; align-items: center; padding-top: 4px; }
+.dot { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--line); background: transparent; }
+.score-num { font-family: var(--mono); font-size: .8rem; color: var(--muted); margin-left: 6px; font-variant-numeric: tabular-nums; }
+.s1 .dot.on { background: var(--ok); border-color: var(--ok); }
+.s2 .dot.on { background: var(--ok); border-color: var(--ok); }
+.s3 .dot.on { background: var(--warn); border-color: var(--warn); }
+.s4 .dot.on { background: var(--hold); border-color: var(--hold); }
+.s5 .dot.on { background: var(--stop); border-color: var(--stop); }
+@media (max-width: 600px) { .cat { grid-template-columns: 1fr auto; } .cat .detail { grid-column: 1 / -1; } }
+
+/* Sources table */
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: .75rem; font-family: var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 500; }
+td.range { font-family: var(--mono); white-space: nowrap; font-variant-numeric: tabular-nums; }
+td a { color: var(--accent); }
+.fine { font-size: .82rem; color: var(--muted); }
+
+ul.plain { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 6px; }
+.summary { max-width: 68ch; }
+
+.history { display: flex; flex-direction: column; gap: 10px; }
+.history-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  font: inherit; font-size: .85rem; font-weight: 400; padding: 6px 10px; border-radius: 999px;
+  background: var(--paper); color: var(--ink); border: 1px solid var(--line); display: inline-flex; gap: 8px; align-items: center;
+}
+.chip .pip { width: 8px; height: 8px; border-radius: 50%; }
+.pip.v-yes { background: var(--ok); } .pip.v-guided { background: var(--warn); } .pip.v-wait { background: var(--hold); } .pip.v-no { background: var(--stop); }
+.progress { list-style: none; margin: 0; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 8px; font-family: var(--mono); font-size: .8rem; color: var(--muted);
+  max-height: 220px; overflow-y: auto; overflow-wrap: anywhere; }
+.progress li:last-child { color: var(--ink); }
+ul.pages { margin: 0; padding-left: 1.2em; font-size: .88rem; display: flex; flex-direction: column; gap: 4px; overflow-wrap: anywhere; }
+ul.pages a, .report a { color: var(--accent); }
+.note { font-size: .85rem; color: var(--muted); max-width: 70ch; }
+@media (prefers-reduced-motion: no-preference) { .report { animation: rise .35s ease-out; } @keyframes rise { from { transform: translateY(6px); } to { transform: none; } } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Parent's reading check</span>
+    <h1>Book Check</h1>
+    <p class="lede">Enter a title and author. Claude searches Common Sense Media, the publisher, Amazon, Barnes &amp; Noble and Goodreads live, then gives you the age ratings they list, a plot summary, a 1–5 rating for each kind of mature content, and a clear call on whether it fits your reader.</p>
+  </header>
+
+  <form class="slip" id="form" autocomplete="off">
+    <div class="field title">
+      <label for="title">Book title</label>
+      <input id="title" name="title" required placeholder="e.g. The Hunger Games">
+    </div>
+    <div class="field">
+      <label for="author">Author</label>
+      <input id="author" name="author" placeholder="e.g. Suzanne Collins">
+    </div>
+    <div class="field">
+      <label for="age">Reader age</label>
+      <input id="age" name="age" type="number" min="6" max="18" value="13">
+    </div>
+    <details>
+      <summary>Add review text for a more grounded answer (optional)</summary>
+      <div class="field">
+        <label for="extra">Paste text from Common Sense Media, a Goodreads review, the publisher's page, or anything your daughter told you about it</label>
+        <textarea id="extra" placeholder="Pasted text is weighed alongside what Claude finds online."></textarea>
+      </div>
+    </details>
+    <div class="actions">
+      <button type="submit" id="go">Check this book</button>
+      <button type="button" class="ghost" id="stop" hidden>Stop</button>
+      <span class="status" id="status" role="status"></span>
+    </div>
+  </form>
+
+  <ul class="progress" id="progress" hidden aria-live="polite"></ul>
+
+  <div id="report-host"></div>
+
+  <div class="history" id="history" hidden>
+    <span class="eyebrow">Books you've checked on this device</span>
+    <div class="history-list" id="history-list"></div>
+  </div>
+
+  <p class="note">How this works: each check runs live web searches and reads the source pages, so a check takes one to three minutes. Every age range links to the page it came from, and the report lists every page Claude looked at. A source shows "Not found" when Claude couldn't find a rating there.</p>
+</div>
+
+<script>
+const VERDICTS = {
+  yes:    { label: "Good to go",           cls: "v-yes" },
+  guided: { label: "OK with a talk",       cls: "v-guided" },
+  wait:   { label: "Wait a year or two",   cls: "v-wait" },
+  no:     { label: "Not recommended",      cls: "v-no" },
+};
+const CATS = [
+  ["sex", "Sex & romance"],
+  ["language", "Language"],
+  ["violence", "Violence & gore"],
+  ["mature", "Mature themes & adult drama"],
+  ["substances", "Drinking, drugs & smoking"],
+];
+const SCALE = ["None", "Mild", "Moderate", "Strong", "Explicit / intense"];
+
+const EXAMPLE = {
+  example: true,
+  title: "The Hunger Games", author: "Suzanne Collins", year: "2008", genre: "Dystopian YA fiction",
+  series: "The Hunger Games, book 1", pages: "374", confidence: "high", known: true, readerAge: 13,
+  consensusAge: "12+",
+  verdict: {
+    level: "guided",
+    headline: "A good fit for most 13-year-olds, with a conversation about the violence.",
+    reasoning: "Sexual content and language are minimal. The violence is the main concern: children are killed in a televised contest, and several deaths are described briefly but vividly. The book treats the violence as horrifying, not exciting, and most sources place it at 12 or 13 and up."
+  },
+  ageRanges: [
+    { source: "Common Sense Media", range: "13+", note: "Flags intense violence; parents and kids in their reviews often say 11–12." },
+    { source: "Publisher (Scholastic)", range: "12+", note: "Marketed for grade 7 and up." },
+    { source: "Amazon", range: "12–17", note: "Listed reading age; follows the publisher's guidance." },
+    { source: "Barnes & Noble", range: "12–17", note: "Shelved in Young Adult." },
+    { source: "Goodreads", range: "No rating", note: "Reader reviews mention violence most often; few mention any other content." },
+  ],
+  categories: [
+    { key: "sex", score: 1, detail: "Kissing, partly staged for the cameras, and a love triangle. Nothing beyond kissing." },
+    { key: "language", score: 1, detail: "No profanity. Some insults." },
+    { key: "violence", score: 4, detail: "Teens kill one another. Deaths by spear, arrows, a snapped neck and mutated wolves are described in a few sentences each. Injuries and starvation are shown." },
+    { key: "mature", score: 3, detail: "Poverty, hunger, a parent's depression after a death, and government oppression. Grief is a steady thread." },
+    { key: "substances", score: 1, detail: "A mentor character is a heavy drinker, shown as a sad figure." },
+  ],
+  summary: "In the nation of Panem, the Capitol forces each of its twelve districts to send one boy and one girl to the Hunger Games, a televised fight to the death. When her younger sister is chosen, sixteen-year-old Katniss Everdeen volunteers in her place. Paired with Peeta, a baker's son who once helped her family, she has to survive the arena while playing to an audience that rewards drama and romance. The story follows her efforts to stay alive and stay herself, and ends with her open defiance of the Capitol setting up the rest of the trilogy.",
+  positives: ["Self-sacrifice and loyalty to family", "Questions media, spectacle and inequality", "A capable, thoughtful female lead"],
+  talkingPoints: ["Why does the Capitol make the Games a TV show?", "How does Katniss decide who to trust?", "How does the book make the violence feel different from an action movie?"]
+};
+
+const $ = (id) => document.getElementById(id);
+function h(tag, props, ...kids) {
+  const el = document.createElement(tag);
+  if (props) for (const [k, v] of Object.entries(props)) {
+    if (k === "class") el.className = v; else if (k === "text") el.textContent = v; else el.setAttribute(k, v);
+  }
+  for (const k of kids.flat()) if (k != null && k !== false) el.append(k);
+  return el;
+}
+const q = (s) => encodeURIComponent(s);
+function sourceLinks(r) {
+  const s = [r.title, r.author].filter(Boolean).join(" ");
+  return {
+    "Common Sense Media": "https://www.commonsensemedia.org/search/" + q(r.title),
+    "Goodreads": "https://www.goodreads.com/search?q=" + q(s),
+    "Amazon": "https://www.amazon.com/s?i=stripbooks&k=" + q(s),
+    "Barnes & Noble": "https://www.barnesandnoble.com/s/" + q(s),
+    "Publisher": "https://www.google.com/search?q=" + q(s + " publisher age range"),
+  };
+}
+function linkFor(source, links) {
+  const k = Object.keys(links).find((n) => source.toLowerCase().includes(n.toLowerCase().split(" ")[0].toLowerCase()));
+  return k ? links[k] : null;
+}
+
+function render(r) {
+  const host = $("report-host");
+  host.replaceChildren();
+  const v = VERDICTS[r.verdict?.level] || VERDICTS.guided;
+  const links = sourceLinks(r);
+  const metaBits = [r.author, r.year, r.genre, r.series, r.pages && r.pages + " pages"].filter(Boolean).join(" · ");
+
+  const head = h("section", null,
+    r.example ? h("span", { class: "example-tag", text: "Example report — enter a book above to check your own" }) : null,
+    h("div", { class: "book-head" },
+      h("div", null, h("h2", { text: r.title || "Untitled" }), h("p", { class: "meta", text: metaBits })),
+      h("span", { class: "conf", text: "Confidence: " + (r.confidence || "unknown") })
+    ),
+    r.known === false ? h("p", { class: "status err", text: "Claude doesn't know this book well enough to rate it reliably. Check the spelling, or paste review text above and try again." }) : null,
+    h("div", { class: "verdict " + v.cls },
+      h("div", { class: "stamp", text: v.label }),
+      h("p", { class: "headline", text: r.verdict?.headline || "" }),
+      h("p", { class: "why", text: r.verdict?.reasoning || "" })
+    ),
+    h("div", { class: "age-strip" },
+      h("span", { class: "eyebrow", text: "Typical recommended age" }),
+      h("span", { class: "big", text: r.consensusAge || "—" }),
+      h("span", { class: "fine", text: "Your reader: " + (r.readerAge ?? 13) })
+    )
+  );
+
+  const cats = h("section", null,
+    h("h3", { text: "Content ratings" }),
+    h("div", { class: "scale-key" }, SCALE.map((s, i) => h("span", { text: (i + 1) + " " + s }))),
+    h("div", { class: "cats" }, CATS.map(([key, label]) => {
+      const c = (r.categories || []).find((x) => x.key === key) || { score: 0, detail: "Not rated." };
+      const n = Math.max(0, Math.min(5, Math.round(Number(c.score) || 0)));
+      return h("div", { class: "cat s" + n },
+        h("span", { class: "name", text: label }),
+        h("span", { class: "dots", "aria-label": n + " of 5, " + (SCALE[n - 1] || "not rated") },
+          [1, 2, 3, 4, 5].map((i) => h("span", { class: "dot" + (i <= n ? " on" : "") })),
+          h("span", { class: "score-num", text: n ? n + "/5" : "—" })),
+        h("p", { class: "detail", text: c.detail || "" })
+      );
+    }))
+  );
+
+  const sources = h("section", null,
+    h("h3", { text: "What the sources say" }),
+    h("div", { class: "table-wrap" }, h("table", null,
+      h("thead", null, h("tr", null, h("th", { text: "Source" }), h("th", { text: "Age range" }), h("th", { text: "Notes" }))),
+      h("tbody", null, (r.ageRanges || []).map((a) => {
+        const href = /^https?:\/\//.test(a.url || "") ? a.url : linkFor(a.source || "", links);
+        return h("tr", null,
+          h("td", null, href ? h("a", { href, target: "_blank", rel: "noopener", text: a.source }) : a.source),
+          h("td", { class: "range", text: a.range || "—" }),
+          h("td", { text: a.note || "" }));
+      }))
+    )),
+    h("p", { class: "fine", text: r.example ? "Example data. Live reports link each source to the page the range came from." : "Each source links to the page the range came from. Listings can change over time." })
+  );
+
+  const summary = h("section", null,
+    h("h3", { text: "Plot summary" }),
+    h("p", { class: "summary", text: r.summary || "" }),
+    (r.positives || []).length ? h("div", null, h("span", { class: "eyebrow", text: "What it does well" }),
+      h("ul", { class: "plain" }, r.positives.map((p) => h("li", { text: p })))) : null
+  );
+
+  const talk = (r.talkingPoints || []).length ? h("section", null,
+    h("h3", { text: "Questions to talk through together" }),
+    h("ul", { class: "plain" }, r.talkingPoints.map((p) => h("li", { text: p })))
+  ) : null;
+
+  const consulted = Array.isArray(r.consulted) && r.consulted.length ? h("section", null,
+    h("details", null, h("summary", { class: "eyebrow", text: "Pages consulted (" + r.consulted.length + ")" }),
+      h("ul", { class: "pages" }, r.consulted.map((p) => {
+        const safe = /^https?:\/\//.test(p.url) ? p.url : null;
+        return h("li", null, safe ? h("a", { href: safe, target: "_blank", rel: "noopener", text: p.title || p.url }) : (p.title || p.url));
+      })))
+  ) : null;
+
+  host.append(h("article", { class: "report" }, head, cats, sources, summary, talk, consulted));
+}
+
+// History (this device only)
+const HKEY = "book-check-history-v1";
+function loadHistory() { try { return JSON.parse(localStorage.getItem(HKEY) || "[]"); } catch { return []; } }
+function saveHistory(list) { try { localStorage.setItem(HKEY, JSON.stringify(list.slice(0, 20))); } catch {} }
+function renderHistory() {
+  const list = loadHistory();
+  $("history").hidden = !list.length;
+  $("history-list").replaceChildren(...list.map((r, i) => {
+    const b = h("button", { type: "button", class: "chip" },
+      h("span", { class: "pip " + (VERDICTS[r.verdict?.level] || VERDICTS.guided).cls }), r.title);
+    b.onclick = () => render(r);
+    return b;
+  }));
+}
+
+function setStatus(t, err) { const s = $("status"); s.textContent = t; s.className = "status" + (err ? " err" : ""); }
+function logProgress(text) {
+  const ul = $("progress");
+  ul.hidden = false;
+  ul.append(h("li", { text }));
+  ul.scrollTop = ul.scrollHeight;
+}
+
+let ctl = null;
+$("stop").onclick = () => ctl?.abort();
+$("form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const title = $("title").value.trim(), author = $("author").value.trim();
+  const age = Math.max(6, Math.min(18, parseInt($("age").value, 10) || 13));
+  if (!title) return;
+  ctl = new AbortController();
+  $("go").disabled = true; $("stop").hidden = false;
+  $("progress").replaceChildren();
+  setStatus("Researching “" + title + "”… this usually takes one to three minutes.");
+  let got = false;
+  try {
+    const res = await fetch("/api/check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, author, age, extra: $("extra").value.trim() }),
+      signal: ctl.signal,
+    });
+    if (!res.ok || !res.body) throw new Error("http " + res.status);
+    const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+    let buf = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += value;
+      const lines = buf.split("\n");
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const msg = JSON.parse(line);
+        if (msg.type === "progress") logProgress(msg.text);
+        else if (msg.type === "error") { got = true; setStatus(msg.message, true); }
+        else if (msg.type === "report") {
+          got = true;
+          const r = { ...msg.report, consulted: msg.pages || [] };
+          render(r);
+          saveHistory([r, ...loadHistory().filter((x) => x.title?.toLowerCase() !== r.title.toLowerCase())]);
+          renderHistory();
+          setStatus("");
+          $("progress").hidden = true;
+        }
+      }
+    }
+    if (!got) setStatus("The connection closed before the report finished. Try again.", true);
+  } catch (err) {
+    if (err?.name === "AbortError") setStatus("Stopped.");
+    else setStatus("Couldn't reach the Book Check server. Check your connection and try again.", true);
+  } finally {
+    $("go").disabled = false; $("stop").hidden = true;
+  }
+});
+
+render(EXAMPLE);
+renderHistory();
+</script>
+</body>
+</html>
